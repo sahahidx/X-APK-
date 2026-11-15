@@ -1,6 +1,0 @@
-{
-  "appId": "com.utility.allinone",
-  "appName": "Utility Kit",
-  "webDir": "www",
-  "server": { "androidScheme": "https" }
-}
