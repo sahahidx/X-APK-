@@ -1,0 +1,33 @@
+<!doctype html><html data-t="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../core/style.css"><script src="../../core/core.js"></script><title>Photo Editor</title></head><body><header><a href="../../dashboard/index.html">←</a><h2>Photo Editor</h2></header><main>
+<input type="file" id="f" accept="image/*"><canvas id="cv"></canvas>
+<label>Crop left % <input type="range" id="cl" min="0" max="90" value="0"></label>
+<label>Crop right % <input type="range" id="cr" min="0" max="90" value="0"></label>
+<label>Crop top % <input type="range" id="ct" min="0" max="90" value="0"></label>
+<label>Crop bottom % <input type="range" id="cb" min="0" max="90" value="0"></label>
+<label>Brightness <input type="range" id="br" min="50" max="150" value="100"></label>
+<label>Contrast <input type="range" id="co" min="50" max="150" value="100"></label>
+<input type="number" id="rw" placeholder="Resize width px (blank = original)">
+<select id="fx"><option value="">No filter</option><option value="grayscale(1)">Grayscale</option><option value="sepia(1)">Sepia</option><option value="blur(2px)">Blur</option><option value="invert(1)">Invert</option><option value="saturate(2)">Vivid</option></select>
+<button id="rt">Rotate 90°</button>
+<select id="fm"><option value="png">PNG (lossless)</option><option value="jpeg">JPEG</option></select>
+<label>JPEG quality <input type="range" id="q" min="0.5" max="1" step="0.05" value="0.9"></label>
+<button id="sv">Save</button>
+</main><script>
+const g=i=>document.getElementById(i),cv=g('cv'),x=cv.getContext('2d'),img=new Image();let r=0;
+const v=i=>+g(i).value;
+function draw(){
+  if(!img.src)return;
+  const W=img.naturalWidth,H=img.naturalHeight,sx=W*v('cl')/100,sy=H*v('ct')/100,
+  sw=W*(100-v('cl')-v('cr'))/100,sh=H*(100-v('ct')-v('cb'))/100,k=v('rw')?v('rw')/sw:1,
+  w=Math.max(1,Math.round(sw*k)),h=Math.max(1,Math.round(sh*k)),odd=r%2;
+  cv.width=odd?h:w;cv.height=odd?w:h;
+  x.save();x.translate(cv.width/2,cv.height/2);x.rotate(r*Math.PI/2);
+  x.filter=`brightness(${v('br')}%) contrast(${v('co')}%) ${g('fx').value}`;
+  x.drawImage(img,sx,sy,sw,sh,-w/2,-h/2,w,h);x.restore();
+}
+img.onload=draw;
+g('f').onchange=e=>{img.src=URL.createObjectURL(e.target.files[0])};
+document.querySelectorAll('input[type=range],select,#rw').forEach(e=>e.oninput=draw);
+g('rt').onclick=()=>{r=(r+1)%4;draw()};
+g('sv').onclick=()=>{const t=g('fm').value;cv.toBlob(b=>Core.save(b,'photo_'+Date.now()+'.'+(t=='png'?'png':'jpg')),'image/'+t,v('q'))};
+</script></body></html>
