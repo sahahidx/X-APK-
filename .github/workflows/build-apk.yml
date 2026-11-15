@@ -1,38 +1,42 @@
-name: Build Android APK
-
+name: Build APK
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install Dependencies
-        run: |
-          npm install
-
-      - name: Build App
-        run: |
-          npm run build --if-present
-
-      - name: Find and Upload APK Artifact
-        uses: actions/upload-artifact@v4
+          node-version: 20
+      - uses: actions/setup-java@v4
         with:
-          name: app-release-apk
-          path: |
-            *.apk
-            app/build/outputs/apk/release/*.apk
-            dist/*.apk
-            build/*.apk
+          distribution: temurin
+          java-version: 17
+      - run: npm install
+      - name: Prepare web assets
+        run: |
+          rm -rf www && mkdir www
+          cp -r dashboard modules core www/
+          echo '<meta http-equiv="refresh" content="0;url=dashboard/index.html">' > www/index.html
+      - run: |
+          npx cap add android
+          npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: utility-app-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
