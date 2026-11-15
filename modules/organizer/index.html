@@ -1,0 +1,45 @@
+<!doctype html><html data-t="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../core/style.css"><script src="../../core/core.js"></script><title>Organizer</title></head><body><header><a href="../../dashboard/index.html">←</a><h2>Organizer</h2></header><main>
+<h3>Batch Renamer</h3>
+<input type="file" id="rf" multiple>
+<input id="pt" value="File_{n}" placeholder="Pattern, {n} = number">
+<input id="st" type="number" value="1" placeholder="Start number">
+<div id="pv"></div><button onclick="ren()">Save renamed copies</button>
+<h3>Snippet Vault (encrypted)</h3>
+<div id="lk"><input id="pin" type="password" placeholder="PIN"><button onclick="unlockUI()">Unlock / Create vault</button></div>
+<div id="vt" hidden><input id="ti" placeholder="Title"><textarea id="co" rows="5" placeholder="Code or note"></textarea>
+<button onclick="add()">Add snippet</button><div id="ls"></div></div>
+</main><script>
+const g=i=>document.getElementById(i),enc=new TextEncoder(),dec=new TextDecoder();
+function names(){
+  const fs=[...g('rf').files];let n=+g('st').value||1;
+  return fs.map(f=>{const e=f.name.includes('.')?f.name.slice(f.name.lastIndexOf('.')):'';
+    return[f,g('pt').value.replace('{n}',String(n++).padStart(3,'0'))+e]});
+}
+function prev(){g('pv').innerHTML=names().map(([f,n])=>`<p>${f.name} → <b>${n}</b></p>`).join('')}
+['rf','pt','st'].forEach(i=>g(i).oninput=prev);
+async function ren(){for(const[f,n]of names())await Core.save(f,n)}
+let P='',list=[];
+const b2s=b=>btoa(String.fromCharCode(...new Uint8Array(b))),s2b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function key(salt){
+  const m=await crypto.subtle.importKey('raw',enc.encode(P),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function lock(){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await key(salt),enc.encode(JSON.stringify(list)));
+  Core.ls.set('vault',{s:b2s(salt),i:b2s(iv),d:b2s(ct)});
+}
+async function unlock(){
+  const v=Core.ls.get('vault');if(!v)return[];
+  return JSON.parse(dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:s2b(v.i)},await key(s2b(v.s)),s2b(v.d))));
+}
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function render(){g('ls').innerHTML=list.map((s,i)=>`<div class="card"><b>${esc(s.t)}</b><pre style="white-space:pre-wrap">${esc(s.c)}</pre><button onclick="del(${i})">Delete</button></div>`).join('')}
+async function unlockUI(){
+  P=g('pin').value;if(!P)return;
+  try{list=await unlock()}catch(e){return alert('Wrong PIN')}
+  g('lk').hidden=true;g('vt').hidden=false;render();
+}
+async function add(){if(!g('ti').value)return;list.push({t:g('ti').value,c:g('co').value});g('ti').value=g('co').value='';await lock();render()}
+async function del(i){list.splice(i,1);await lock();render()}
+</script></body></html>
