@@ -1,0 +1,18 @@
+<!doctype html><html data-t="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../core/style.css"><script src="../../core/core.js"></script><title>Video Trimmer</title></head><body><header><a href="../../dashboard/index.html">←</a><h2>Video Trimmer</h2></header><main>
+<input type="file" id="f" accept="video/*"><video id="v" controls playsinline></video>
+<input id="s" type="number" step="0.1" value="0" placeholder="Start (sec)">
+<input id="e" type="number" step="0.1" placeholder="End (sec)">
+<button id="tv">Trim video</button><button id="ta">Extract audio only</button>
+<progress id="p" max="1" value="0"></progress>
+</main><script>
+const g=i=>document.getElementById(i);const v=g('v');
+g('f').onchange=e=>{v.src=URL.createObjectURL(e.target.files[0])};
+v.onloadedmetadata=()=>g('e').value=v.duration.toFixed(1);
+async function run(audio){
+  if(!v.src)return alert('Pick a video');
+  const o={start:+g('s').value,end:+g('e').value,audio,w:v.videoWidth,h:v.videoHeight,bps:2500000,onp:x=>g('p').value=x};
+  const b=await Core.record(v,o);
+  Core.save(b,(audio?'audio_':'trim_')+Date.now()+'.webm');
+}
+g('tv').onclick=()=>run(false);g('ta').onclick=()=>run(true);
+</script></body></html>
