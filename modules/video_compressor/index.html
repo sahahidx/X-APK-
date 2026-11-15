@@ -1,0 +1,18 @@
+<!doctype html><html data-t="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../core/style.css"><script src="../../core/core.js"></script><title>Video Compressor</title></head><body><header><a href="../../dashboard/index.html">←</a><h2>Video Compressor</h2></header><main>
+<input type="file" id="f" accept="video/*"><video id="v" controls playsinline></video>
+<select id="h"><option value="720">720p</option><option value="480">480p</option><option value="360" selected>360p</option></select>
+<input id="b" type="number" value="800" placeholder="Bitrate kbps">
+<button id="go">Compress</button><progress id="p" max="1" value="0"></progress><p id="o"></p>
+</main><script>
+const g=i=>document.getElementById(i);let file;
+g('f').onchange=e=>{file=e.target.files[0];g('v').src=URL.createObjectURL(file)};
+g('go').onclick=async()=>{
+  const v=g('v');if(!file)return alert('Pick a video');
+  if(!v.videoWidth)await new Promise(r=>v.addEventListener('loadedmetadata',r,{once:true}));
+  const h=Math.min(+g('h').value,v.videoHeight),w=Math.round(v.videoWidth*h/v.videoHeight/2)*2;
+  g('o').textContent='Processing in real time, keep app open...';
+  const blob=await Core.record(v,{w,h,bps:g('b').value*1000,onp:x=>g('p').value=x});
+  g('o').textContent=(file.size/1e6).toFixed(1)+' MB → '+(blob.size/1e6).toFixed(1)+' MB';
+  Core.save(blob,'compressed_'+Date.now()+'.webm');
+};
+</script></body></html>
